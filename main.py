@@ -1,4 +1,5 @@
 import tensorflow as tf
+import autoencoder as ae
 
 
 #load from the tfrecords file
@@ -17,14 +18,17 @@ def parser(record):
 
 
 def import_dataset(addr):
-    dataset = tf.data.TFRecordDataset(filenames=addr, num_parallel_reads=50) # check npr if this is weird
+    dataset = tf.data.TFRecordDataset(filenames=addr, num_parallel_reads=4) # check npr if this is weird
     dataset = dataset.map(parser)
     return dataset
 
 
-print("Loading tfrecords file")
+print("Main executing")
 
-import_dataset("apmldataset.tfrecords")
+raw_dataset = import_dataset("apmldataset.tfrecords")
 
-print("done loading tfr file")
+ae.autoencoder(raw_dataset)    # run the autoencoder
+
+print("Main complete")
+
 

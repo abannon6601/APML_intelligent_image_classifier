@@ -1,4 +1,5 @@
-
+# this is a one-use set of functions to read the main dataset into a tfrecords file
+# during normal operations this file is NEVER USED
 
 global_address = 'C:\\Users\\Alan\\Desktop\\OneDrive - University College London\\Year 4\\Machine learning\\assignment_data'
 # imgaes are 256x256
