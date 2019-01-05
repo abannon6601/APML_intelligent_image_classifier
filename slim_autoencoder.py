@@ -8,8 +8,8 @@ sys.path.append("../")
 
 n_nodes_inpl = [256, 256, 3]
 
-learning_rate = 0.00001
-num_epochs = 30
+learning_rate = 0.01
+num_epochs = 5
 
 def inspect_variables(variables):
     for var in variables:
@@ -22,11 +22,6 @@ def inspect_layers(endpoints):
     print()
 
 def build_encoder(inputs):
-
-    with slim.arg_scope([slim.fully_connected],
-                        kernel_size=[3, 3],
-                        padding='SAME',
-                        biases_initializer=tf.constant_initializer(0.0)):
 
     net = slim.flatten(inputs)
 
@@ -71,7 +66,7 @@ with g.as_default():
         result = build_decoder(lsr)
 
     #define optimiser and loss function
-    loss = tf.reduce_sum(tf.square(result-inputs))
+    loss = tf.reduce_mean(tf.square(result-inputs))
     optimiser = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss)
 
     # Initialize the variables
@@ -87,7 +82,7 @@ with g.as_default():
         filename = './apmldataset.tfrecords'
         filename_queue = tf.train.string_input_producer([filename])
         image, label = ld.read_and_decode(filename_queue,n_nodes_inpl)
-        images, labels = tf.train.shuffle_batch([image, label], batch_size= 10, capacity= 80, num_threads=1, min_after_dequeue=5)
+        images, labels = tf.train.shuffle_batch([image, label], batch_size= 100, capacity= 800, num_threads=1, min_after_dequeue=50)
 
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
