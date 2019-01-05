@@ -55,8 +55,8 @@ def load_data(addr):
                         'label': _int64_feature([int(i) for i in row[1:]]),
                         'image': _bytes_feature(tf.compat.as_bytes(flat_image))
                     }
-                    tf_example = tf.train.Example(features = tf.train.Features(feature = feature))
-                    writer.write(tf_example.SerializeToString())
+                    example = tf.train.Example(features=tf.train.Features(feature=feature))
+                    writer.write(example.SerializeToString())
 
                 else:
                     print('IMAGE NOT FOUND')
@@ -65,8 +65,6 @@ def load_data(addr):
                 pass
 
         writer.close()
-
-
         print("Loading Data: DONE")
 
 #quickly print out all the labels of the dataset for debug
@@ -78,3 +76,19 @@ def view_data_labels():
 #quick function to run with local path
 def create_dataset():
     load_data(global_address)
+
+#read back the data from the tfrecords file
+def read_and_decode(filename_queue,n_nodes_inpl):
+    reader = tf.TFRecordReader()
+    _, serialised_example = reader.read(filename_queue)
+
+    features = tf.parse_single_example(serialised_example, features={
+        'label': tf.FixedLenFeature([5], tf.int64),
+        'image': tf.FixedLenFeature([], tf.string)})
+
+    image = tf.image.decode_jpeg(features['image'])
+    image /= 255
+    image = tf.reshape(image, n_nodes_inpl)
+    label = features['label']
+
+    return image, label
