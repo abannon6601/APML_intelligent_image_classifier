@@ -8,6 +8,7 @@ import os
 import tensorflow as tf
 import pandas
 import numpy as np
+from sklearn.preprocessing import normalize
 import cv2
 from tqdm import tqdm
 
@@ -27,12 +28,12 @@ def load_image(addr):
     return image
 
 #Create a tfrecords file with the entire dataset
-def load_data(addr):
+def load_data(addr, out_addr = "apmldataset.tfrecords", all = True):
     print("Loading Data: START")
 
     labels = pandas.read_csv(os.path.join(addr, 'attribute_list.csv')).values;
 
-    with tf.python_io.TFRecordWriter("apmldataset.tfrecords") as writer:
+    with tf.python_io.TFRecordWriter(out_addr) as writer:
         firstLine = True
         pbar = tqdm(labels)
         image_number = 0
@@ -44,12 +45,23 @@ def load_data(addr):
             image_number = image_number + 1
             pbar.set_description("Loading image %d" % image_number)
 
+            # create a noiseless tfrecords if flags correct
+            if row[1] == "-1" and all == False:
+                #print("skipping noise")
+                continue
+
             try:
                 path = os.path.join(addr, 'dataset', row[0] + '.png')
                 image = load_image(path)
 
+
                 if image is not None:
                     flat_image = cv2.imencode('.jpg', image)[1].tostring()
+
+                    # apply normalisation to the classes to bring them to binary state
+                    hcolour = row[1]    # preserve the hair colour
+                    row = (row == "1").astype(int)
+                    row[1] = hcolour
 
                     feature = {
                         'label': _int64_feature([int(i) for i in row[1:]]),
@@ -74,8 +86,8 @@ def view_data_labels():
         print(result.features.feature['train/label'].int64_list.value)
 
 #quick function to run with local path
-def create_dataset():
-    load_data(global_address)
+def create_dataset(write_addr, all = True):
+    load_data(global_address, write_addr, all)
 
 #read back the data from the tfrecords file
 def read_and_decode(filename_queue,n_nodes_inpl):
@@ -86,9 +98,15 @@ def read_and_decode(filename_queue,n_nodes_inpl):
         'label': tf.FixedLenFeature([5], tf.int64),
         'image': tf.FixedLenFeature([], tf.string)})
 
+    #grab, normalise, and reshape the image
     image = tf.image.decode_jpeg(features['image'])
     image /= 255
     image = tf.reshape(image, n_nodes_inpl)
+
+    # grab label, multi-class label to binary classes and attach to the label
     label = features['label']
+    hcolour = label[0]
+    hair_classes = tf.one_hot(hcolour,6)    #six classes
+    label = tf.concat([hair_classes,tf.to_float(label[1:])],axis=0)
 
     return image, label

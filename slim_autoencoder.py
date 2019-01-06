@@ -9,17 +9,8 @@ sys.path.append("../")
 n_nodes_inpl = [256, 256, 3]
 
 learning_rate = 0.01
-num_epochs = 5
+num_epochs = 10
 
-def inspect_variables(variables):
-    for var in variables:
-            print('name = {} {}shape = {}'.format(var.name, " "*(55-len(var.name)), var.get_shape()))
-    print()
-
-def inspect_layers(endpoints):
-    for k, v in endpoints.iteritems():
-        print('name = {} {}shape = {}'.format(v.name, " "*(55-len(v.name)), v.get_shape()))
-    print()
 
 def build_encoder(inputs):
 
@@ -104,4 +95,3 @@ with g.as_default():
             coord.join(threads)
 
 
-12
