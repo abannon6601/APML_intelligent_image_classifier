@@ -2,7 +2,7 @@
 # during normal operations this file is NEVER USED
 
 global_address = 'C:\\Users\\Alan\\Desktop\\OneDrive - University College London\\Year 4\\Machine learning\\assignment_data'
-# imgaes are 256x256
+# images are 256x256
 
 import os
 import tensorflow as tf
@@ -79,15 +79,56 @@ def load_data(addr, out_addr = "apmldataset.tfrecords", all = True):
         writer.close()
         print("Loading Data: DONE")
 
+#Create a tfrecords file with the evaluation dataset
+def load_data_evaluation(addr, out_addr = "apmldataset_evaluation.tfrecords", all = True):
+    print("Loading Data: START")
+    num_images = 100
+    itr = range(num_images)
+
+    with tf.python_io.TFRecordWriter(out_addr) as writer:
+        pbar = tqdm(itr)
+        image_number = 0
+        for image in pbar:
+
+            image_number = image_number + 1
+            pbar.set_description("Loading image %d" % image_number)
+
+            try:
+                path = os.path.join(addr, 'testing_dataset', str(image_number) + '.png')
+                image = load_image(path)
+
+                if image is not None:
+                    flat_image = cv2.imencode('.jpg', image)[1].tostring()
+
+                    feature = {
+                        'label': _int64_feature([image_number]),
+                        'image': _bytes_feature(tf.compat.as_bytes(flat_image))
+                    }
+                    example = tf.train.Example(features=tf.train.Features(feature=feature))
+                    writer.write(example.SerializeToString())
+
+                else:
+                    print('IMAGE NOT FOUND')
+            except Exception as inst:
+                print("caught exception")
+                print(inst)
+                pass
+
+        writer.close()
+        print("Loading Data: DONE")
+
+
 #quickly print out all the labels of the dataset for debug
 def view_data_labels():
     for example in tf.python_io.tf_record_iterator("apmldataset.tfrecords"):
         result = tf.train.Example.FromString(example)
         print(result.features.feature['train/label'].int64_list.value)
 
-#quick function to run with local path
+#quick functions to run with local path
 def create_dataset(write_addr, all = True):
     load_data(global_address, write_addr, all)
+def create_evaluation_dataset(write_addr, all = True):
+    load_data_evaluation(global_address, write_addr, all)
 
 #read back the data from the tfrecords file
 def read_and_decode(filename_queue,n_nodes_inpl):
@@ -107,6 +148,25 @@ def read_and_decode(filename_queue,n_nodes_inpl):
     label = features['label']
     hcolour = label[0]
     hair_classes = tf.one_hot(hcolour,6)    #six classes
-    label = tf.concat([hair_classes,tf.to_float(label[1:])],axis=0)
+    label = tf.concat([hair_classes,tf.to_float(label[1:])],axis=0) # concat disguards the old haircolour
+
+    return image, label
+
+#read back the data from the evaluation tfrecords file
+def read_and_decode_evaluation(filename_queue,n_nodes_inpl):
+    reader = tf.TFRecordReader()
+    _, serialised_example = reader.read(filename_queue)
+
+    features = tf.parse_single_example(serialised_example, features={
+        'label': tf.FixedLenFeature([1], tf.int64),
+        'image': tf.FixedLenFeature([], tf.string)})
+
+    #grab, normalise, and reshape the image
+    image = tf.image.decode_jpeg(features['image'])
+    image /= 255
+    image = tf.reshape(image, n_nodes_inpl)
+
+    # grab label
+    label = features['label']
 
     return image, label
