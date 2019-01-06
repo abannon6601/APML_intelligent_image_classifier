@@ -6,10 +6,15 @@ import load_data as ld
 import sys
 sys.path.append("../")
 
+save_path = './saves_autoencoder/autoencoder.ckpt'
+
 n_nodes_inpl = [256, 256, 3]
 
 learning_rate = 0.01
-num_epochs = 10
+num_epochs = 3
+
+total_images = 500
+batch_size = 100
 
 
 def build_encoder(inputs):
@@ -70,27 +75,38 @@ with g.as_default():
 
         sess.run(init)
 
+        # save object
+        saver = tf.train.Saver(tf.all_variables())
+
         filename = './apmldataset.tfrecords'
         filename_queue = tf.train.string_input_producer([filename])
         image, label = ld.read_and_decode(filename_queue,n_nodes_inpl)
-        images, labels = tf.train.shuffle_batch([image, label], batch_size= 100, capacity= 800, num_threads=1, min_after_dequeue=50)
+        images, labels = tf.train.shuffle_batch([image, label], batch_size= batch_size, capacity= 800, num_threads=1, min_after_dequeue=50)
 
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
         try:
-
             for epoch in range(num_epochs):
+                epoch_loss = 0
+                for batch in range(int(total_images/batch_size)):
+                    input_x,_ = sess.run([images, labels])
+                    _, l1 = sess.run([optimiser, loss], feed_dict={inputs: input_x})
+                    epoch_loss += l1
+                    print("batch loss " + str(l1))
+                print('Epoch loss ' + str(epoch_loss))
+                # model should be trained
+                saved_path = saver.save(sess, save_path)
+                print("Saved in path: %s" % saved_path)
 
-                input_x,_ = sess.run([images, labels])
-                _, l1 = sess.run([optimiser,loss], feed_dict = {inputs: input_x})
-                print('loss ' + str(l1))
+
 
         except Exception as e:
             #we hit a mine, so stop doing shit
-            coord.request_stop()
+            print(e)
+            coord.request_stop(e)
         finally:
-            #Shut it down! Code red! burn the evidence and run!
+            #Shut it down! Code red! Burn the evidence and run!
             coord.request_stop()
             coord.join(threads)
 

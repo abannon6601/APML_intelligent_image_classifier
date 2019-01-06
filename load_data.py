@@ -45,7 +45,7 @@ def load_data(addr, out_addr = "apmldataset.tfrecords", all = True):
             image_number = image_number + 1
             pbar.set_description("Loading image %d" % image_number)
 
-            # create a noiseless tfrecords if flags correct
+            # create a noiseless tfrecords if flags correct             USE FOR TESTING ONLY!!! TODO disable before final tests
             if row[1] == "-1" and all == False:
                 #print("skipping noise")
                 continue
