@@ -152,6 +152,25 @@ def read_and_decode(filename_queue,n_nodes_inpl):
 
     return image, label
 
+#read back the data from the tfrecords file without any label modificaition
+def read_and_decode_no_label_mod(filename_queue,n_nodes_inpl):
+    reader = tf.TFRecordReader()
+    _, serialised_example = reader.read(filename_queue)
+
+    features = tf.parse_single_example(serialised_example, features={
+        'label': tf.FixedLenFeature([5], tf.int64),
+        'image': tf.FixedLenFeature([], tf.string)})
+
+    #grab, normalise, and reshape the image
+    image = tf.image.decode_jpeg(features['image'])
+    image /= 255
+    image = tf.reshape(image, n_nodes_inpl)
+
+    # grab label
+    label = features['label']
+
+    return image, label
+
 #read back the data from the evaluation tfrecords file
 def read_and_decode_evaluation(filename_queue,n_nodes_inpl):
     reader = tf.TFRecordReader()

@@ -22,7 +22,7 @@ batch_size = 10
 #model params
 n_nodes_inpl = [256, 256, 3]
 
-# define NN comprising CNN and fully connected layers
+# define NN comprising convolusional and fully connected layers
 def build_classifier(inputs):
 
     #setup layer variables
@@ -59,7 +59,6 @@ def build_classifier(inputs):
 
 # train the classifier
 def train_classifier():
-
     #set up the graph
     g = tf.Graph()
     with g.as_default():
@@ -121,20 +120,86 @@ def train_classifier():
                 coord.join(threads)
 
 def test_classifier():
-    return 0
-    #TODO need to get performance score on section of dataset
+    print("Reloading model for test")
+
+    # number of images to test on
+    test_num = 10
+
+    g = tf.Graph()
+    with g.as_default():
+        # in-out placeholders
+        inputs = tf.placeholder(tf.float32, shape=[None] + [256, 256, 3])
+        labels = tf.placeholder('float', shape=[None] + [10])
+
+        with tf.variable_scope("TF-Slim", [inputs]):
+            # add model to graph
+            outputs = build_classifier(inputs)
+
+        restorer = tf.train.Saver()
+
+        with tf.Session() as sess:
+            restorer.restore(sess, save_path)
+            print('model restored')
+            filename = './apmldataset_denoised.tfrecords'
+            filename_queue = tf.train.string_input_producer([filename])
+            image, label = ld.read_and_decode(filename_queue, n_nodes_inpl)
+            image_batch, label_batch = tf.train.shuffle_batch([image, label], batch_size=1, capacity=100,
+                                                              num_threads=1,
+                                                              min_after_dequeue=0)  # set the batch size to one to simplify processing
+
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+
+            #predictions = tf.zeros([10], tf.float32)
+            #labels_true = tf.zeros([10], tf.float32)
+            cm = tf.zeros([10,10], tf.int32)
+
+
+            for test in range(test_num):  # repeat for all images
+                # get new data
+                input_im, input_lab = sess.run([image_batch, label_batch])
+
+                # process the model and split into hair/other classses
+                result_ten = sess.run(outputs, feed_dict={inputs: input_im})
+                eyeg_smil_yon_hu, hair_col = result_ten[:, 0:4], result_ten[:, 4:]      #TODO check this line
+
+                # convert back to original label form
+                bin_vec = sess.run(tf.round(tf.math.sigmoid(eyeg_smil_yon_hu)))[0]
+                #bin_vec = (bin_vec * 2) - 1  # convert back to 1/-1 encoding
+                hair_final = np.argmax(sess.run(tf.nn.softmax(hair_col)))
+                # one-hot encoded section
+                hair_classes = tf.one_hot(hair_final, 6)
+
+                bin_ten = tf.convert_to_tensor(bin_vec, dtype=tf.float32)
+                label_recon = tf.concat([hair_classes, bin_ten], axis=0)
+
+                #predictions = tf.concat([predictions, label_recon], axis=0)
+                #labels_true = tf.concat([labels_true, input_lab[0]], axis=0)
+                cm = cm + tf.contrib.metrics.confusion_matrix(label_recon, input_lab[0], num_classes=10)    #TODO still not working
+
+            #print(sess.run(predictions))
+            # build confusion matrix
+
+            print(sess.run(cm))
+
+
+
+
+
+
 
 #load the saved model for evaluation
 def evalute_classifier():
     print("Reloading model for evaluation")
 
+    # home many images there are to evaluate
     image_num = 100
 
-    open('./csv_files/task_1.csv', mode='w')# clear the files
-    open('./csv_files/task_2.csv', mode='w')  # clear the files
-    open('./csv_files/task_3.csv', mode='w')  # clear the files
-    open('./csv_files/task_4.csv', mode='w')  # clear the files
-    open('./csv_files/task_5.csv', mode='w')  # clear the files
+    open('./csv_files/task_1.csv', mode='w')# clear the files or create them if they don't already exist
+    open('./csv_files/task_2.csv', mode='w')
+    open('./csv_files/task_3.csv', mode='w')
+    open('./csv_files/task_4.csv', mode='w')
+    open('./csv_files/task_5.csv', mode='w')
 
 
     g = tf.Graph()
@@ -168,7 +233,7 @@ def evalute_classifier():
 
                 # process the model and split into hair/other classses
                 result_ten = sess.run(outputs, feed_dict={inputs: input_im})
-                eyeg_smil_yon_hu, hair_col = result_ten[:,0:4], result_ten[:,4:]
+                eyeg_smil_yon_hu, hair_col = result_ten[:,0:4], result_ten[:,4:]        #TODO check this line
 
                 #convert back to original label form
                 bin_vec = sess.run(tf.round(tf.math.sigmoid(eyeg_smil_yon_hu)))[0]
