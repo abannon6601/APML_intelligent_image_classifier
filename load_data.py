@@ -8,7 +8,6 @@ import os
 import tensorflow as tf
 import pandas
 import numpy as np
-from sklearn.preprocessing import normalize
 import cv2
 from tqdm import tqdm
 
