@@ -16,7 +16,7 @@ learning_rate = 0.01
 num_epochs = 20
 
 #data params
-total_images = 4000 #80%
+total_images = 4000 #80%, used in training
 batch_size = 10
 
 #model params
@@ -37,7 +37,7 @@ def build_classifier(inputs):
             # conv1
             net = slim.repeat(inputs, 2, slim.conv2d, 4, scope='conv1')
             net = slim.max_pool2d(net, scope='pool1')
-            # conv2
+            # conv2s
             net = slim.repeat(net, 2, slim.conv2d, 6, scope='conv2')
             net = slim.max_pool2d(net, scope='pool2')
 
@@ -223,7 +223,7 @@ def test_classifier():
 def evalute_classifier():
     print("Reloading model for evaluation")
 
-    # home many images there are to evaluate
+    # how many images there are to evaluate
     image_num = 100
 
     open('./csv_files/task_1.csv', mode='w')# clear the files or create them if they don't already exist
@@ -283,22 +283,22 @@ def evalute_classifier():
                 #write to the files
                 with open('./csv_files/task_1.csv', mode='a', newline='') as task_1_file:
                     employee_writer = csv.writer(task_1_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                    employee_writer.writerow([str(image_id)+ ".png", str(int(bin_vec[1]))])
+                    employee_writer.writerow([str(image_id)+ "", str(int(bin_vec[1]))])
 
                 with open('./csv_files/task_2.csv', mode='a', newline='') as task_1_file:
                     employee_writer = csv.writer(task_1_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                    employee_writer.writerow([str(image_id) + ".png", str(int(bin_vec[2]))])
+                    employee_writer.writerow([str(image_id) + "", str(int(bin_vec[2]))])
 
                 with open('./csv_files/task_3.csv', mode='a', newline='') as task_1_file:
                     employee_writer = csv.writer(task_1_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                    employee_writer.writerow([str(image_id)+ ".png", str(int(bin_vec[0]))])
+                    employee_writer.writerow([str(image_id)+ "", str(int(bin_vec[0]))])
 
                 with open('./csv_files/task_4.csv', mode='a', newline='') as task_1_file:
                     employee_writer = csv.writer(task_1_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                    employee_writer.writerow([str(image_id)+ ".png", str(int(bin_vec[3]))])
+                    employee_writer.writerow([str(image_id)+ "", str(int(bin_vec[3]))])
 
                 with open('./csv_files/task_5.csv', mode='a', newline='') as task_1_file:
                     employee_writer = csv.writer(task_1_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-                    employee_writer.writerow([str(image_id)+ ".png", str(hair_final)])
+                    employee_writer.writerow([str(image_id)+ "", str(hair_final)])
 
 

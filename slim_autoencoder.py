@@ -18,7 +18,7 @@ learning_rate = 0.01
 num_epochs = 5
 
 #data params
-total_images = 500
+total_images = 5000
 batch_size = 100
 
 #wrapper function for converting lsr to feature

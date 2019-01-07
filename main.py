@@ -42,18 +42,23 @@ def t_sne(label_stack, lsr_stack):
 
 print("Main executing")
 
+##--    Create tfrecord files for all tasks. All three must be in place before starting any task
 #ld.create_dataset(write_addr= "apmldataset_denoised.tfrecords", all = False)
 #ld.create_dataset(write_addr= "apmldataset.tfrecords", all = True)
 #ld.create_evaluation_dataset(write_addr = "apmldataset_evaluation.tfrecords")
 
+##--    Trains the autoencoder on the entire dataset, saves the variables
 #ae.train_autoencoder()
 
+##--    Uncomment both lines. Uses the autoencoder (MUST BE TRAINED) to encode and process with t-sne the dataset
 #label_stack, lsr_stack = ae.encode(5000)
 #t_sne(label_stack, lsr_stack)
 
+##--    Train on 80% of the dataset, validate on 20%, or evaluate on the unlabeld dataset and compile csv files
 #sc.train_classifier()
-#sc.evalute_classifier()
-sc.test_classifier()
+#sc.test_classifier()
+sc.evalute_classifier()
+
 
 print("Main complete")
 
