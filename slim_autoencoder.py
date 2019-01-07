@@ -11,14 +11,14 @@ save_path = './saves_autoencoder/autoencoder.ckpt'
 
 #model params
 n_nodes_inpl = [256, 256, 3]
-lsr_size = 32
+lsr_size = 128
 
 #training params
 learning_rate = 0.01
-num_epochs = 3
+num_epochs = 5
 
 #data params
-total_images = 5000
+total_images = 500
 batch_size = 100
 
 #wrapper function for converting lsr to feature
@@ -30,28 +30,35 @@ def build_encoder(inputs):
 
     net = slim.flatten(inputs)
 
-    net = slim.fully_connected(net, 128,
+    net = slim.fully_connected(net, 256,
                                     weights_initializer = tf.random_normal_initializer(
                                     stddev=0.1),
                                     scope='fc1')
+    net = slim.fully_connected(net, 64,
+                                    weights_initializer = tf.random_normal_initializer(
+                                    stddev=0.1),
+                                    scope='fc2')
     lsr = slim.fully_connected(net, lsr_size,
                                     weights_initializer=tf.random_normal_initializer(
                                     stddev=0.1),
-                                    scope='fc2')
+                                    scope='fc3')
 
     return lsr  # this should now contain the latent space representation
 
 # degine the structure of the decoder
 def build_decoder(lsr):
-
     net = slim.fully_connected(lsr, lsr_size,
                                     weights_initializer = tf.random_normal_initializer(
                                     stddev=0.1),
-                                    scope='fc3')
+                                    scope='fc4')
+    net = slim.fully_connected(net, 64,
+                                    weights_initializer = tf.random_normal_initializer(
+                                    stddev=0.1),
+                                    scope='fc5')
     net = slim.fully_connected(net, 256*256*3,
                                     weights_initializer=tf.random_normal_initializer(
                                     stddev=0.1),
-                                    scope='fc4')
+                                    scope='fc6')
 
     net = tf.reshape(net, [-1, 256, 256, 3])
 
@@ -122,11 +129,11 @@ def train_autoencoder():
                 coord.request_stop()
                 coord.join(threads)
 
+    print("autoencoder training complte")
+
 # encode the dataset into lsr and store as new tfrecords file. test_images define how many images are considered
 def encode(test_images):
     print("Loading encoder")
-
-
 
     # empty arrays we will fill with lsrs and labels
     lsr_stack = np.zeros(shape=(test_images,lsr_size))
@@ -161,11 +168,12 @@ def encode(test_images):
                 input_im, input_labels = sess.run([image_batch, label_batch])
                 lsr_tensor = sess.run(lsr, feed_dict={inputs: input_im})[0]
 
-                #write to the lsr and label numpy arrays
+                #write to the lsr and label numpy arrays,
                 lsr_stack[image] = lsr_tensor
-                if input_labels[0] != '-1':
-                    input_labels[0] = '1'
-                label_stack[image] = input_labels[0]
+                #print(input_labels[0][0])
+                if input_labels[0][0] != -1:
+                    input_labels[0][0] = 1
+                label_stack[image] = input_labels[0][0]
 
             return label_stack, lsr_stack
 

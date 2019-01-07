@@ -13,10 +13,10 @@ save_path = './saves_classifier/classifier.ckpt'
 
 #training params
 learning_rate = 0.01
-num_epochs = 10
+num_epochs = 20
 
 #data params
-total_images = 5000
+total_images = 4000 #80%
 batch_size = 10
 
 #model params
@@ -35,11 +35,11 @@ def build_classifier(inputs):
                             padding='SAME'):
 
             # conv1
-            net = slim.repeat(inputs, 1, slim.conv2d, 4, scope='conv1')
+            net = slim.repeat(inputs, 2, slim.conv2d, 4, scope='conv1')
             net = slim.max_pool2d(net, scope='pool1')
             # conv2
-            #net = slim.repeat(net, 2, slim.conv2d, 32, scope='conv2')
-            #net = slim.max_pool2d(net, scope='pool2')
+            net = slim.repeat(net, 2, slim.conv2d, 6, scope='conv2')
+            net = slim.max_pool2d(net, scope='pool2')
 
             # reshape tensor to matrix
             net = slim.flatten(net)
@@ -123,7 +123,19 @@ def test_classifier():
     print("Reloading model for test")
 
     # number of images to test on
-    test_num = 10
+    test_num = 1000 #20%
+
+    #holding arrays for results of test
+    hair_preds = np.zeros(test_num)
+    hair_trues = np.zeros(test_num)
+    glasses_preds = np.zeros(test_num)
+    glasses_trues = np.zeros(test_num)
+    smile_preds = np.zeros(test_num)
+    smile_trues = np.zeros(test_num)
+    young_preds = np.zeros(test_num)
+    young_trues = np.zeros(test_num)
+    human_preds = np.zeros(test_num)
+    human_trues = np.zeros(test_num)
 
     g = tf.Graph()
     with g.as_default():
@@ -142,17 +154,13 @@ def test_classifier():
             print('model restored')
             filename = './apmldataset_denoised.tfrecords'
             filename_queue = tf.train.string_input_producer([filename])
-            image, label = ld.read_and_decode(filename_queue, n_nodes_inpl)
+            image, label = ld.read_and_decode_no_label_mod(filename_queue, n_nodes_inpl)    # use the no label mod option to get the orgignal hiar colour encoding
             image_batch, label_batch = tf.train.shuffle_batch([image, label], batch_size=1, capacity=100,
                                                               num_threads=1,
                                                               min_after_dequeue=0)  # set the batch size to one to simplify processing
 
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-
-            #predictions = tf.zeros([10], tf.float32)
-            #labels_true = tf.zeros([10], tf.float32)
-            cm = tf.zeros([10,10], tf.int32)
 
 
             for test in range(test_num):  # repeat for all images
@@ -161,30 +169,53 @@ def test_classifier():
 
                 # process the model and split into hair/other classses
                 result_ten = sess.run(outputs, feed_dict={inputs: input_im})
-                eyeg_smil_yon_hu, hair_col = result_ten[:, 0:4], result_ten[:, 4:]      #TODO check this line
+                hair_col, eyeg_smil_yon_hu, = result_ten[:, 0:5], result_ten[:, 5:]
 
                 # convert back to original label form
-                bin_vec = sess.run(tf.round(tf.math.sigmoid(eyeg_smil_yon_hu)))[0]
-                #bin_vec = (bin_vec * 2) - 1  # convert back to 1/-1 encoding
+                bin_vec = np.rint(sess.run(tf.round(tf.math.sigmoid(eyeg_smil_yon_hu)))[0])
                 hair_final = np.argmax(sess.run(tf.nn.softmax(hair_col)))
-                # one-hot encoded section
-                hair_classes = tf.one_hot(hair_final, 6)
 
-                bin_ten = tf.convert_to_tensor(bin_vec, dtype=tf.float32)
-                label_recon = tf.concat([hair_classes, bin_ten], axis=0)
+                # write to the reslts arrays
+                hair_preds[test] = hair_final
+                hair_trues[test] = input_lab[0][0]
 
-                #predictions = tf.concat([predictions, label_recon], axis=0)
-                #labels_true = tf.concat([labels_true, input_lab[0]], axis=0)
-                cm = cm + tf.contrib.metrics.confusion_matrix(label_recon, input_lab[0], num_classes=10)    #TODO still not working
+                glasses_preds[test] = bin_vec[0]
+                glasses_trues[test] = input_lab[0][1]
 
-            #print(sess.run(predictions))
-            # build confusion matrix
+                smile_preds[test] = bin_vec[1]
+                smile_trues[test] = input_lab[0][2]
 
-            print(sess.run(cm))
+                young_preds[test] = bin_vec[2]
+                young_trues[test] = input_lab[0][3]
+
+                human_preds[test] = bin_vec[3]
+                human_trues[test] = input_lab[0][4]
 
 
+            # write the confusion matrices
+            hair_cm = sess.run(tf.contrib.metrics.confusion_matrix(hair_trues, hair_preds, num_classes = 6))
+            glasses_cm = sess.run(tf.contrib.metrics.confusion_matrix(glasses_trues, glasses_preds))
+            smile_cm = sess.run(tf.contrib.metrics.confusion_matrix(smile_trues, smile_preds))
+            young_cm = sess.run(tf.contrib.metrics.confusion_matrix(young_trues, young_preds))
+            human_cm = sess.run(tf.contrib.metrics.confusion_matrix(human_trues, human_preds))
 
+            #normalise
+            hair_cm = np.true_divide(hair_cm,np.sum(hair_cm))
+            glasses_cm = np.true_divide(glasses_cm, np.sum(glasses_cm))
+            smile_cm = np.true_divide(smile_cm, np.sum(smile_cm))
+            young_cm = np.true_divide(young_cm, np.sum(young_cm))
+            human_cm = np.true_divide(human_cm, np.sum(human_cm))
 
+            print("hair")
+            print(hair_cm)
+            print("glasses")
+            print(glasses_cm)
+            print("smile")
+            print(smile_cm)
+            print("young")
+            print(young_cm)
+            print("human")
+            print(human_cm)
 
 
 
@@ -233,7 +264,7 @@ def evalute_classifier():
 
                 # process the model and split into hair/other classses
                 result_ten = sess.run(outputs, feed_dict={inputs: input_im})
-                eyeg_smil_yon_hu, hair_col = result_ten[:,0:4], result_ten[:,4:]        #TODO check this line
+                hair_col, eyeg_smil_yon_hu, = result_ten[:, 0:5], result_ten[:, 5:]
 
                 #convert back to original label form
                 bin_vec = sess.run(tf.round(tf.math.sigmoid(eyeg_smil_yon_hu)))[0]
